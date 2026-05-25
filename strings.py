@@ -8,6 +8,8 @@ S = {
         'error_generic':        '❌ Something went wrong. Please try again.',
         'not_approved':         '⏳ Your registration is still under review.',
         'no_permission':        '🚫 You do not have permission to use this command.',
+        'session_lost':         '⚠️ Your session was interrupted. Please use /start to continue.',
+        'resume_receipt':       '📎 You\'ve already paid — please send your *payment confirmation* (photo or screenshot):',
         'btn_back':             '⬅️ Back',
         'cancelled':            '✅ Cancelled.',
 
@@ -129,6 +131,8 @@ S = {
         'error_generic':        '❌ Щось пішло не так. Будь ласка, спробуйте ще раз.',
         'not_approved':         '⏳ Ваша реєстрація ще на розгляді.',
         'no_permission':        '🚫 У вас немає дозволу використовувати цю команду.',
+        'session_lost':         '⚠️ Ваш сеанс було перервано. Будь ласка, використайте /start, щоб продовжити.',
+        'resume_receipt':       '📎 Ви вже оплатили — будь ласка, надішліть *підтвердження оплати* (фото або скриншот):',
         'btn_back':             '⬅️ Назад',
         'cancelled':            '✅ Скасовано.',
 

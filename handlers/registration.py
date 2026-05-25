@@ -43,7 +43,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             await _show_main_menu(update, lang)
             return ConversationHandler.END
 
-        if status in ('pending_payment', 'pending_approval'):
+        if status == 'pending_payment':
+            # Bot may have restarted mid-flow — re-enter receipt upload
+            await update.message.reply_text(
+                t(lang, 'resume_receipt'), parse_mode=ParseMode.MARKDOWN
+            )
+            return RECEIPT
+
+        if status == 'pending_approval':
             await update.message.reply_text(t(lang, 'already_pending'))
             return ConversationHandler.END
 
@@ -161,6 +168,9 @@ async def handle_receipt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return RECEIPT
 
     participant = db.get_participant(chat_id)
+    if not participant:
+        await update.message.reply_text(t(lang, 'session_lost'))
+        return ConversationHandler.END
     db.save_receipt(participant['id'], file_id)
     db.update_participant(chat_id, {'status': 'pending_approval'})
 
