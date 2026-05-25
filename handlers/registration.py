@@ -214,7 +214,7 @@ async def handle_housing_pref(update: Update, context: ContextTypes.DEFAULT_TYPE
             t(lang, 'housing_pref_with_price',
               price_housing=PRICE_WITH_HOUSING,
               price_no_housing=PRICE_WITHOUT_HOUSING)
-            + f"\n\n✅ {t(lang, 'btn_housing_yes')}",
+            + f"\n\n{t(lang, 'btn_housing_yes')}",
             parse_mode=ParseMode.MARKDOWN,
         )
         # Show the house list inline
@@ -249,7 +249,7 @@ async def handle_housing_pref(update: Update, context: ContextTypes.DEFAULT_TYPE
             t(lang, 'housing_pref_with_price',
               price_housing=PRICE_WITH_HOUSING,
               price_no_housing=PRICE_WITHOUT_HOUSING)
-            + f"\n\n✅ {t(lang, 'btn_housing_no')}",
+            + f"\n\n{t(lang, 'btn_housing_no')}",
             parse_mode=ParseMode.MARKDOWN,
         )
         await query.message.reply_text(
@@ -379,7 +379,14 @@ async def handle_receipt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     phone_val   = participant.get('phone', '—')
     username    = participant.get('username', '')
     housing_raw = participant.get('needs_housing')
-    housing_str = '🏠 Needs housing' if housing_raw else '🏡 Has own housing'
+    if housing_raw:
+        reservation = db.get_reservation(participant['id'])
+        if reservation and reservation.get('houses'):
+            housing_str = f"🏠 Needs housing · {reservation['houses']['name']}"
+        else:
+            housing_str = '🏠 Needs housing · No house selected'
+    else:
+        housing_str = '🏡 Has own housing'
 
     name_safe     = _md_escape(name)
     phone_safe    = _md_escape(str(phone_val))

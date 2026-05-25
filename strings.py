@@ -36,7 +36,7 @@ S = {
         'btn_share_phone':      '📲 Share Phone Number',
         'payment_instructions': (
             f'💳 *Payment*\n\n'
-            f'Amount due: *{{amount}}*\n\n'
+            f'Amount due: *${{amount}}*\n\n'
             f'Please complete your registration payment at the link below:\n\n'
             f'{{payment_link}}\n\n'
             f'Once you\'ve paid, come back and send your *payment receipt* (photo or screenshot).'
@@ -57,16 +57,16 @@ S = {
             'We\'re happy you\'re here. To join the conference, please complete a short '
             'registration form and send us your payment receipt.\n\n'
             '*Registration fee:*\n'
-            '🏠 With housing — {price_housing}\n'
-            '🚗 Without housing (own arrangement) — {price_no_housing}\n\n'
+            '🏠 With housing: ${price_housing}\n'
+            '🚗 Without housing (own arrangement): ${price_no_housing}\n\n'
             'After your receipt is reviewed and confirmed by our team, you\'ll get access '
             'to the schedule, venue info, and everything else you need.\n\n'
             'Let\'s get started! 👇'
         ),
         'housing_pref_with_price': (
             '🏡 Do you need local housing for the conference?\n\n'
-            '🏠 With housing — {price_housing}\n'
-            '🚗 Without housing (own arrangement) — {price_no_housing}'
+            '🏠 With housing: ${price_housing}\n'
+            '🚗 Without housing (own arrangement): ${price_no_housing}'
         ),
         'house_selected_tentative': '🏠 Spot held at *{name}*. You can change this from the Housing menu once you\'re approved.',
         'on_hold_notification': (
@@ -198,7 +198,7 @@ S = {
         'btn_share_phone':      '📲 Поділитися номером телефону',
         'payment_instructions': (
             f'💳 *Оплата*\n\n'
-            f'Сума до сплати: *{{amount}}*\n\n'
+            f'Сума до сплати: *${{amount}}*\n\n'
             f'Будь ласка, здійсніть оплату за посиланням нижче:\n\n'
             f'{{payment_link}}\n\n'
             f'Після оплати поверніться сюди та надішліть *квитанцію про оплату* (фото або скриншот).'
@@ -219,16 +219,16 @@ S = {
             'Ми раді, що ви тут. Щоб приєднатися до конференції, будь ласка, заповніть коротку '
             'форму реєстрації та надішліть квитанцію про оплату.\n\n'
             '*Реєстраційний внесок:*\n'
-            '🏠 З проживанням — {price_housing}\n'
-            '🚗 Без проживання (власні умови) — {price_no_housing}\n\n'
+            '🏠 З проживанням: ${price_housing}\n'
+            '🚗 Без проживання (власні умови): ${price_no_housing}\n\n'
             'Після того як наша команда перевірить та підтвердить вашу квитанцію, '
             'ви отримаєте доступ до розкладу, інформації про місце та всього іншого.\n\n'
             'Починаємо! 👇'
         ),
         'housing_pref_with_price': (
             '🏡 Чи потребуєте ви місцевого проживання під час конференції?\n\n'
-            '🏠 З проживанням — {price_housing}\n'
-            '🚗 Без проживання (власні умови) — {price_no_housing}'
+            '🏠 З проживанням: ${price_housing}\n'
+            '🚗 Без проживання (власні умови): ${price_no_housing}'
         ),
         'house_selected_tentative': '🏠 Місце заброньоване в *{name}*. Ви можете змінити це через меню Житло після схвалення.',
         'on_hold_notification': (
