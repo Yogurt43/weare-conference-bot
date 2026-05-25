@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: conferencebot2
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python bot.py
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: WEBHOOK_URL
+        sync: false
+      - key: GROUP_CHAT_ID
+        sync: false
+      - key: PAYMENT_LINK
+        sync: false
