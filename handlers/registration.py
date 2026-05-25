@@ -547,6 +547,6 @@ def build_registration_handler() -> ConversationHandler:
         fallbacks=[CommandHandler('start', start)],
         allow_reentry=True,
         name='registration',
-        persistent=False,
+        persistent=True,
         per_message=False,
     )

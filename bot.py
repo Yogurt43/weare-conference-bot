@@ -9,6 +9,7 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
 from config import BOT_TOKEN, WEBHOOK_URL
+from persistence import SupabasePersistence
 from handlers.registration import build_registration_handler, menu_command
 from handlers.housing import get_housing_handlers
 from handlers.info import get_info_handlers
@@ -40,7 +41,7 @@ def run_async(coro):
 
 
 # ─── PTB Application ──────────────────────────────────────────────────────────
-ptb_app = Application.builder().token(BOT_TOKEN).build()
+ptb_app = Application.builder().token(BOT_TOKEN).persistence(SupabasePersistence()).build()
 
 # Register handlers
 ptb_app.add_handler(build_registration_handler())
