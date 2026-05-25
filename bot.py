@@ -83,7 +83,13 @@ ptb_app.add_error_handler(_error_handler)
 run_async(ptb_app.initialize())
 
 # Register webhook
-WEBHOOK_SECRET = BOT_TOKEN.split(':')[0]  # use token prefix as secret
+# Prefer an explicit env var; fall back to token prefix only if not set.
+# Set WEBHOOK_SECRET to a long random string in Render env for real security.
+import os as _os
+WEBHOOK_SECRET = _os.environ.get('WEBHOOK_SECRET') or BOT_TOKEN.split(':')[0]
+if not _os.environ.get('WEBHOOK_SECRET'):
+    logger.warning("WEBHOOK_SECRET env var not set — using token prefix as secret (weak). Set WEBHOOK_SECRET in production.")
+
 run_async(ptb_app.bot.set_webhook(
     url=f"{WEBHOOK_URL}/webhook",
     secret_token=WEBHOOK_SECRET,
@@ -100,7 +106,12 @@ def webhook():
         abort(403)
     data = request.get_json(force=True)
     update = Update.de_json(data, ptb_app.bot)
-    run_async(ptb_app.process_update(update))
+    try:
+        run_async(ptb_app.process_update(update))
+    except Exception:
+        # Log but always return 200 — a non-200 makes Telegram retry the
+        # webhook which causes duplicate processing under load.
+        logger.exception("Failed to process update %s", data.get('update_id'))
     return 'ok', 200
 
 

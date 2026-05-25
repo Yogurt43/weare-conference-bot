@@ -181,7 +181,11 @@ async def cmd_approve(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.message.reply_text("Usage: /approve <chat_id>")
         return
-    target_id = int(context.args[0])
+    try:
+        target_id = int(context.args[0])
+    except ValueError:
+        await update.message.reply_text("Usage: /approve <chat_id>")
+        return
     participant = db.get_participant(target_id)
     if not participant:
         await update.message.reply_text(t('en', 'admin_user_not_found'))
@@ -202,7 +206,11 @@ async def cmd_deny(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(context.args) < 2:
         await update.message.reply_text("Usage: /deny <chat_id> <reason>")
         return
-    target_id = int(context.args[0])
+    try:
+        target_id = int(context.args[0])
+    except ValueError:
+        await update.message.reply_text("Usage: /deny <chat_id> <reason>")
+        return
     reason = ' '.join(context.args[1:])
     participant = db.get_participant(target_id)
     if not participant:
@@ -227,7 +235,11 @@ async def cmd_viewreceipt(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.message.reply_text("Usage: /viewreceipt <chat_id>")
         return
-    target_id = int(context.args[0])
+    try:
+        target_id = int(context.args[0])
+    except ValueError:
+        await update.message.reply_text("Usage: /viewreceipt <chat_id>")
+        return
     participant = db.get_participant(target_id)
     if not participant:
         await update.message.reply_text(t('en', 'admin_user_not_found'))
@@ -386,7 +398,11 @@ async def cmd_moveresident(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(context.args) < 2:
         await update.message.reply_text("Usage: /moveresident <chat_id> <house_name>")
         return
-    target_id = int(context.args[0])
+    try:
+        target_id = int(context.args[0])
+    except ValueError:
+        await update.message.reply_text("Usage: /moveresident <chat_id> <house_name>")
+        return
     house_name = ' '.join(context.args[1:])
 
     participant = db.get_participant(target_id)
@@ -650,7 +666,11 @@ async def cmd_addadmin(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.message.reply_text("Usage: /addadmin <chat_id>")
         return
-    new_id = int(context.args[0])
+    try:
+        new_id = int(context.args[0])
+    except ValueError:
+        await update.message.reply_text("Usage: /addadmin <chat_id>")
+        return
     existing = db.get_admin_ids_from_db()
     if new_id not in existing:
         existing.append(new_id)
@@ -663,7 +683,11 @@ async def cmd_removeuser(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.message.reply_text("Usage: /removeuser <chat_id>")
         return
-    target_id = int(context.args[0])
+    try:
+        target_id = int(context.args[0])
+    except ValueError:
+        await update.message.reply_text("Usage: /removeuser <chat_id>")
+        return
     db.delete_participant(target_id)
     await update.message.reply_text(t('en', 'admin_user_removed'))
 

@@ -46,6 +46,14 @@ def _contact_line(participant: dict) -> str:
 _awaiting_qa: set[int] = set()
 _awaiting_msg: set[int] = set()
 
+_MAX_MSG_LEN = 1000  # cap Q&A and coordinator message text
+
+
+def clear_awaiting(chat_id: int) -> None:
+    """Remove chat_id from all awaiting sets. Call from /start or /menu to unblock."""
+    _awaiting_qa.discard(chat_id)
+    _awaiting_msg.discard(chat_id)
+
 
 async def handle_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
     participant = db.get_participant(update.effective_chat.id)
@@ -132,6 +140,13 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
     participant = db.get_participant(chat_id)
     lang = utils.get_lang(participant)
     text = update.message.text.strip()
+
+    # Length guard: prevents oversized messages from breaking Telegram's 4096-char limit
+    if len(text) > _MAX_MSG_LEN:
+        await update.message.reply_text(
+            f"✏️ Message too long (max {_MAX_MSG_LEN} characters). Please shorten it."
+        )
+        return
 
     # Resolve the organiser channel once — used by both Q&A and messages
     def _org_channel():
@@ -221,6 +236,17 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
 
+async def handle_non_text_while_awaiting(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Group-1: if user sends a photo/sticker/etc. while awaiting Q&A or msg input, unblock them."""
+    chat_id = update.effective_chat.id
+    if chat_id not in _awaiting_qa and chat_id not in _awaiting_msg:
+        return
+    clear_awaiting(chat_id)
+    participant = db.get_participant(chat_id)
+    lang = utils.get_lang(participant)
+    await update.message.reply_text(t(lang, 'use_menu_buttons'))
+
+
 def get_info_handlers() -> list:
     return [
         # Reply-keyboard menu buttons — specific text matches must come BEFORE
@@ -232,4 +258,6 @@ def get_info_handlers() -> list:
         CallbackQueryHandler(handle_coordinator_pre_approval,  pattern='^pre_approval_question$'),
         # Catch-all free-text (Q&A answers, coordinator messages)
         MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_input),
+        # Unblock users who send non-text (photo, sticker, etc.) while awaiting input
+        MessageHandler(~filters.TEXT & ~filters.COMMAND, handle_non_text_while_awaiting),
     ]

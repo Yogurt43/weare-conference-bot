@@ -130,13 +130,22 @@ async def handle_house_confirm(update: Update, context: ContextTypes.DEFAULT_TYP
         await query.edit_message_text(t('en', 'error_generic'))
         return
 
-    # Double-check capacity (race condition guard)
+    # Pre-check capacity
     taken = db.get_house_occupancy(house_id)
     if taken >= house['capacity']:
         await query.edit_message_text(t(lang, 'house_full_msg'))
         return
 
     db.create_reservation(house_id, participant['id'])
+
+    # Post-insert recheck: two users may have passed the pre-check simultaneously.
+    # If we're now over capacity, delete the reservation just created and tell the user.
+    taken_after = db.get_house_occupancy(house_id)
+    if taken_after > house['capacity']:
+        db.delete_reservation(participant['id'])
+        await query.edit_message_text(t(lang, 'house_full_msg'))
+        return
+
     await query.edit_message_text(
         t(lang, 'house_reserved', name=house['name']),
         parse_mode=ParseMode.MARKDOWN

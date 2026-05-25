@@ -7,6 +7,7 @@ import db
 import utils
 from strings import t
 from config import PAYMENT_LINK, GROUP_CHAT_ID, OWNER_ID, PRICE_WITH_HOUSING, PRICE_WITHOUT_HOUSING
+from handlers.info import clear_awaiting
 
 
 def _md_escape(s: str) -> str:
@@ -45,6 +46,8 @@ def _phone_keyboard(lang: str):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     chat_id = update.effective_chat.id
+    # Always unblock any stuck Q&A / coordinator-message awaiting state
+    clear_awaiting(chat_id)
     participant = db.get_participant(chat_id)
 
     if participant:
@@ -145,8 +148,14 @@ async def handle_lang(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 
 async def handle_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang  = _get_lang(update, context)
-    words = update.message.text.strip().split()
+    raw   = update.message.text.strip()
 
+    # Length guard: prevents oversized strings crashing admin message formatting
+    if len(raw) > 60:
+        await update.message.reply_text(t(lang, 'invalid_name'))
+        return NAME
+
+    words = raw.split()
     if len(words) < 2:
         await update.message.reply_text(t(lang, 'invalid_name'))
         return NAME
