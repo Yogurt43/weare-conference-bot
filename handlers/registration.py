@@ -152,7 +152,7 @@ async def handle_housing_pref(update: Update, context: ContextTypes.DEFAULT_TYPE
     db.update_participant(update.effective_chat.id, {'needs_housing': needs_housing})
 
     label = t(lang, 'btn_housing_yes') if needs_housing else t(lang, 'btn_housing_no')
-    await query.edit_message_text(t(lang, 'housing_prompt') + f" {label} ✅")
+    await query.edit_message_text(t(lang, 'housing_prompt') + f" {label}")
     await query.message.reply_text(
         t(lang, 'share_phone'),
         reply_markup=_phone_keyboard(lang),
