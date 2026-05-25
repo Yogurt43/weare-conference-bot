@@ -41,9 +41,8 @@ S = {
         ),
         'upload_receipt':       '📎 Please upload your *payment receipt* (photo or screenshot):',
         'receipt_submitted':    (
-            '✅ Your receipt has been received!\n\n'
-            'Our team will review it and notify you once your registration is approved. '
-            'This usually takes 1–2 business days.'
+            '✅ Your payment confirmation has been received!\n\n'
+            'Our team will review it and notify you once your registration is approved.'
         ),
         'approved_welcome':     (
             f'🎉 *You\'re registered for {CONF_NAME}!*\n\n'
@@ -163,9 +162,8 @@ S = {
         ),
         'upload_receipt':       '📎 Будь ласка, завантажте *квитанцію про оплату* (фото або скриншот):',
         'receipt_submitted':    (
-            '✅ Вашу квитанцію отримано!\n\n'
-            'Наша команда перевірить її та повідомить вас після схвалення реєстрації. '
-            'Зазвичай це займає 1–2 робочі дні.'
+            '✅ Ваше підтвердження оплати отримано!\n\n'
+            'Наша команда перевірить його та повідомить вас після схвалення реєстрації.'
         ),
         'approved_welcome':     (
             f'🎉 *Вітаємо! Ви зареєстровані на {CONF_NAME}!*\n\n'
