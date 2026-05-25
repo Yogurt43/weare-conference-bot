@@ -186,13 +186,10 @@ async def handle_gender(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
     await query.edit_message_text(t(lang, 'choose_gender') + " ✅")
     await query.message.reply_text(
-        t(lang, 'housing_pref_with_price',
-          price_housing=PRICE_WITH_HOUSING,
-          price_no_housing=PRICE_WITHOUT_HOUSING),
-        reply_markup=_housing_keyboard(lang),
-        parse_mode=ParseMode.MARKDOWN,
+        t(lang, 'share_phone'),
+        reply_markup=_phone_keyboard(lang),
     )
-    return HOUSING_PREF
+    return PHONE
 
 
 async def handle_housing_pref(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -220,12 +217,20 @@ async def handle_housing_pref(update: Update, context: ContextTypes.DEFAULT_TYPE
                 t(lang, 'no_houses_available'),
                 parse_mode=ParseMode.MARKDOWN,
             )
-            # No houses yet — skip to phone; housing can be picked from menu later
+            # No houses configured yet — skip to payment; housing can be picked from menu later
+            keyboard = InlineKeyboardMarkup([[
+                InlineKeyboardButton(t(lang, 'btn_have_question'), callback_data='pre_approval_question')
+            ]])
             await query.message.reply_text(
-                t(lang, 'share_phone'),
-                reply_markup=_phone_keyboard(lang),
+                t(lang, 'payment_instructions', payment_link=PAYMENT_LINK, amount=PRICE_WITH_HOUSING),
+                parse_mode=ParseMode.MARKDOWN,
             )
-            return PHONE
+            await query.message.reply_text(
+                t(lang, 'upload_receipt'),
+                reply_markup=keyboard,
+                parse_mode=ParseMode.MARKDOWN,
+            )
+            return RECEIPT
         buttons = [
             [InlineKeyboardButton(
                 utils.format_house_button(h, db.get_house_occupancy(h['id']), lang),
@@ -246,11 +251,19 @@ async def handle_housing_pref(update: Update, context: ContextTypes.DEFAULT_TYPE
             + f"\n\n{t(lang, 'btn_housing_no')}",
             parse_mode=ParseMode.MARKDOWN,
         )
+        keyboard = InlineKeyboardMarkup([[
+            InlineKeyboardButton(t(lang, 'btn_have_question'), callback_data='pre_approval_question')
+        ]])
         await query.message.reply_text(
-            t(lang, 'share_phone'),
-            reply_markup=_phone_keyboard(lang),
+            t(lang, 'payment_instructions', payment_link=PAYMENT_LINK, amount=PRICE_WITHOUT_HOUSING),
+            parse_mode=ParseMode.MARKDOWN,
         )
-        return PHONE
+        await query.message.reply_text(
+            t(lang, 'upload_receipt'),
+            reply_markup=keyboard,
+            parse_mode=ParseMode.MARKDOWN,
+        )
+        return RECEIPT
 
 
 async def handle_house_select_reg(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -277,11 +290,15 @@ async def handle_house_select_reg(update: Update, context: ContextTypes.DEFAULT_
                 t(lang, 'no_houses_available'),
                 parse_mode=ParseMode.MARKDOWN,
             )
+            keyboard = InlineKeyboardMarkup([[
+                InlineKeyboardButton(t(lang, 'btn_have_question'), callback_data='pre_approval_question')
+            ]])
             await query.message.reply_text(
-                t(lang, 'share_phone'),
-                reply_markup=_phone_keyboard(lang),
+                t(lang, 'payment_instructions', payment_link=PAYMENT_LINK, amount=PRICE_WITH_HOUSING),
+                parse_mode=ParseMode.MARKDOWN,
             )
-            return PHONE
+            await query.message.reply_text(t(lang, 'upload_receipt'), reply_markup=keyboard, parse_mode=ParseMode.MARKDOWN)
+            return RECEIPT
         buttons = [
             [InlineKeyboardButton(
                 utils.format_house_button(h, db.get_house_occupancy(h['id']), lang),
@@ -307,11 +324,15 @@ async def handle_house_select_reg(update: Update, context: ContextTypes.DEFAULT_
         t(lang, 'house_selected_tentative', name=house['name']),
         parse_mode=ParseMode.MARKDOWN,
     )
+    keyboard = InlineKeyboardMarkup([[
+        InlineKeyboardButton(t(lang, 'btn_have_question'), callback_data='pre_approval_question')
+    ]])
     await query.message.reply_text(
-        t(lang, 'share_phone'),
-        reply_markup=_phone_keyboard(lang),
+        t(lang, 'payment_instructions', payment_link=PAYMENT_LINK, amount=PRICE_WITH_HOUSING),
+        parse_mode=ParseMode.MARKDOWN,
     )
-    return PHONE
+    await query.message.reply_text(t(lang, 'upload_receipt'), reply_markup=keyboard, parse_mode=ParseMode.MARKDOWN)
+    return RECEIPT
 
 
 async def handle_phone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -324,26 +345,15 @@ async def handle_phone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     phone = update.message.contact.phone_number
     db.update_participant(update.effective_chat.id, {'phone': phone, 'status': 'pending_payment'})
 
-    needs_housing = context.user_data.get('needs_housing')
-    if needs_housing is None:
-        participant = db.get_participant(update.effective_chat.id)
-        needs_housing = participant.get('needs_housing', False)
-    amount = PRICE_WITH_HOUSING if needs_housing else PRICE_WITHOUT_HOUSING
-
+    # one_time_keyboard=True on the phone keyboard auto-dismisses it; send housing question
     await update.message.reply_text(
-        t(lang, 'payment_instructions', payment_link=PAYMENT_LINK, amount=amount),
-        reply_markup=ReplyKeyboardRemove(),
+        t(lang, 'housing_pref_with_price',
+          price_housing=PRICE_WITH_HOUSING,
+          price_no_housing=PRICE_WITHOUT_HOUSING),
+        reply_markup=_housing_keyboard(lang),
         parse_mode=ParseMode.MARKDOWN,
     )
-    keyboard = InlineKeyboardMarkup([[
-        InlineKeyboardButton(t(lang, 'btn_have_question'), callback_data='pre_approval_question')
-    ]])
-    await update.message.reply_text(
-        t(lang, 'upload_receipt'),
-        reply_markup=keyboard,
-        parse_mode=ParseMode.MARKDOWN,
-    )
-    return RECEIPT
+    return HOUSING_PREF
 
 
 async def handle_receipt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
