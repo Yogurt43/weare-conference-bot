@@ -33,19 +33,8 @@ async def handle_housing_menu(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
         return
 
-    # Use the preference recorded during registration to skip the redundant question
-    needs_housing = participant.get('needs_housing')
-    if needs_housing is True:
-        await _show_house_list(query, participant, lang)
-    elif needs_housing is False:
-        await query.edit_message_text(t(lang, 'no_housing_needed'))
-    else:
-        # Preference unknown — ask (edge case: old accounts pre-dating the question)
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton(t(lang, 'btn_housing_yes'), callback_data='housing_yes')],
-            [InlineKeyboardButton(t(lang, 'btn_housing_no'),  callback_data='housing_no')],
-        ])
-        await query.edit_message_text(t(lang, 'housing_prompt'), reply_markup=keyboard)
+    # Go straight to the house list — preference was already captured during registration
+    await _show_house_list(query, participant, lang)
 
 
 async def _show_house_list(query, participant: dict, lang: str):
@@ -65,21 +54,6 @@ async def _show_house_list(query, participant: dict, lang: str):
         reply_markup=InlineKeyboardMarkup(buttons),
     )
 
-
-async def handle_housing_no(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    participant = db.get_participant(update.effective_chat.id)
-    lang = utils.get_lang(participant)
-    await query.edit_message_text(t(lang, 'no_housing_needed'))
-
-
-async def handle_housing_yes(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    participant = db.get_participant(update.effective_chat.id)
-    lang = utils.get_lang(participant)
-    await _show_house_list(query, participant, lang)
 
 
 async def handle_house_select(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -149,8 +123,6 @@ async def handle_cancel_reservation(update: Update, context: ContextTypes.DEFAUL
 def get_housing_handlers() -> list:
     return [
         CallbackQueryHandler(handle_housing_menu,      pattern='^menu_housing$'),
-        CallbackQueryHandler(handle_housing_no,        pattern='^housing_no$'),
-        CallbackQueryHandler(handle_housing_yes,       pattern='^housing_yes$'),
         CallbackQueryHandler(handle_house_select,      pattern='^house_[0-9a-f-]+$'),
         CallbackQueryHandler(handle_house_confirm,     pattern='^houseconfirm_[0-9a-f-]+$'),
         CallbackQueryHandler(handle_cancel_reservation,pattern='^housing_cancel$'),
