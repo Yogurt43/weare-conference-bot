@@ -33,11 +33,37 @@ async def handle_housing_menu(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
         return
 
-    keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton(t(lang, 'btn_housing_yes'), callback_data='housing_yes')],
-        [InlineKeyboardButton(t(lang, 'btn_housing_no'), callback_data='housing_no')],
-    ])
-    await query.edit_message_text(t(lang, 'housing_prompt'), reply_markup=keyboard)
+    # Use the preference recorded during registration to skip the redundant question
+    needs_housing = participant.get('needs_housing')
+    if needs_housing is True:
+        await _show_house_list(query, participant, lang)
+    elif needs_housing is False:
+        await query.edit_message_text(t(lang, 'no_housing_needed'))
+    else:
+        # Preference unknown — ask (edge case: old accounts pre-dating the question)
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton(t(lang, 'btn_housing_yes'), callback_data='housing_yes')],
+            [InlineKeyboardButton(t(lang, 'btn_housing_no'),  callback_data='housing_no')],
+        ])
+        await query.edit_message_text(t(lang, 'housing_prompt'), reply_markup=keyboard)
+
+
+async def _show_house_list(query, participant: dict, lang: str):
+    """Render the available-houses list into the current message."""
+    gender = participant.get('gender', 'M')
+    houses = db.get_houses_for_gender(gender)
+    if not houses:
+        await query.edit_message_text(t(lang, 'no_houses_available'))
+        return
+    buttons = []
+    for house in houses:
+        taken = db.get_house_occupancy(house['id'])
+        label = utils.format_house_button(house, taken, lang)
+        buttons.append([InlineKeyboardButton(label, callback_data=f"house_{house['id']}")])
+    await query.edit_message_text(
+        t(lang, 'housing_list_header'),
+        reply_markup=InlineKeyboardMarkup(buttons),
+    )
 
 
 async def handle_housing_no(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -51,26 +77,9 @@ async def handle_housing_no(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_housing_yes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    chat_id = update.effective_chat.id
-    participant = db.get_participant(chat_id)
+    participant = db.get_participant(update.effective_chat.id)
     lang = utils.get_lang(participant)
-    gender = participant.get('gender', 'M')
-
-    houses = db.get_houses_for_gender(gender)
-    if not houses:
-        await query.edit_message_text(t(lang, 'no_houses_available'))
-        return
-
-    buttons = []
-    for house in houses:
-        taken = db.get_house_occupancy(house['id'])
-        label = utils.format_house_button(house, taken, lang)
-        buttons.append([InlineKeyboardButton(label, callback_data=f"house_{house['id']}")])
-
-    await query.edit_message_text(
-        t(lang, 'housing_list_header'),
-        reply_markup=InlineKeyboardMarkup(buttons)
-    )
+    await _show_house_list(query, participant, lang)
 
 
 async def handle_house_select(update: Update, context: ContextTypes.DEFAULT_TYPE):
