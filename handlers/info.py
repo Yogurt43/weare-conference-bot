@@ -73,17 +73,22 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
     lang = utils.get_lang(participant)
     text = update.message.text.strip()
 
+    # Resolve the organiser channel once — used by both Q&A and messages
+    def _org_channel():
+        stored = db.get_setting('coord_channel_id')
+        return int(stored) if stored else GROUP_CHAT_ID
+
     if chat_id in _awaiting_qa:
         _awaiting_qa.discard(chat_id)
         db.save_question(participant['id'], text)
         await update.message.reply_text(t(lang, 'qa_submitted'))
-        # Forward to admin group
-        if GROUP_CHAT_ID:
+        target = _org_channel()
+        if target:
             name = participant.get('full_name', 'Unknown')
             await context.bot.send_message(
-                GROUP_CHAT_ID,
+                target,
                 f"❓ *Question from {name}*\n\n{text}",
-                parse_mode=ParseMode.MARKDOWN
+                parse_mode=ParseMode.MARKDOWN,
             )
         return
 
@@ -91,15 +96,13 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
         _awaiting_msg.discard(chat_id)
         db.save_message(participant['id'], text)
         await update.message.reply_text(t(lang, 'coordinator_submitted'))
-        # Forward to coordinator channel
-        coord_channel = db.get_setting('coord_channel_id')
-        target = int(coord_channel) if coord_channel else GROUP_CHAT_ID
+        target = _org_channel()
         if target:
             name = participant.get('full_name', 'Unknown')
             await context.bot.send_message(
                 target,
                 f"📨 *Message from {name}*\n\n{text}",
-                parse_mode=ParseMode.MARKDOWN
+                parse_mode=ParseMode.MARKDOWN,
             )
         return
 

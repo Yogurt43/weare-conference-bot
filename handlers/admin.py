@@ -329,6 +329,22 @@ async def cmd_resume(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 @_require_admin
+async def cmd_setchannel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Set the organiser channel that receives Q&A and coordinator messages."""
+    if not context.args:
+        current = db.get_setting('coord_channel_id')
+        await update.message.reply_text(
+            f"Current channel ID: `{current or 'not set'}`\n\nUsage: /setchannel `<channel_id>`\n\n"
+            "To get a channel ID: forward any message from the channel to @userinfobot",
+            parse_mode=ParseMode.MARKDOWN,
+        )
+        return
+    channel_id = context.args[0].strip()
+    db.set_setting('coord_channel_id', channel_id)
+    await update.message.reply_text(f"✅ Organiser channel set to `{channel_id}`", parse_mode=ParseMode.MARKDOWN)
+
+
+@_require_admin
 async def cmd_setschedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
     _setting_field[update.effective_user.id] = 'schedule'
     await update.message.reply_text(t('en', 'admin_set_prompt', field='schedule'))
@@ -442,6 +458,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "📢 *Broadcast*\n"
         "/broadcast `<message>` — send message to all approved users\n\n"
         "⚙️ *Settings*\n"
+        "/setchannel `<id>` — set organiser channel (Q&A + messages)\n"
         "/setschedule — set schedule text\n"
         "/setvenue — set venue text\n"
         "/pause `<housing|qa|messages>` — pause a feature\n"
@@ -502,6 +519,7 @@ def get_admin_handlers() -> list:
         CommandHandler('status',        cmd_status),
         CommandHandler('pause',         cmd_pause),
         CommandHandler('resume',        cmd_resume),
+        CommandHandler('setchannel',    cmd_setchannel),
         CommandHandler('setschedule',   cmd_setschedule),
         CommandHandler('setvenue',      cmd_setvenue),
         CommandHandler('addadmin',      cmd_addadmin),
