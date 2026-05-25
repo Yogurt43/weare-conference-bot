@@ -49,6 +49,7 @@ S = {
             f'🎉 *You\'re registered for {CONF_NAME}!*\n\n'
             'Your registration has been approved. Use the menu below to access all features.'
         ),
+        'housing_on_approval':  '🏠 *Choose your house*\n\nPlease select a house below. You don\'t have to decide right now, but please choose by *January 10*.\n\nYou can always access this from the Housing menu.',
         'denied_notification':  '❌ *Registration Update*\n\nYour registration was not approved.\n\n*Reason:* {reason}\n\nPlease contact the organizers if you have questions.',
 
         # ── Housing ──────────────────────────────────────────────────────────
@@ -171,6 +172,7 @@ S = {
             f'🎉 *Вітаємо! Ви зареєстровані на {CONF_NAME}!*\n\n'
             'Вашу реєстрацію схвалено. Використовуйте меню нижче для доступу до всіх функцій.'
         ),
+        'housing_on_approval':  '🏠 *Оберіть будинок*\n\nБудь ласка, оберіть будинок нижче. Ви не зобов\'язані вирішувати прямо зараз, але будь ласка, зробіть вибір до *10 січня*.\n\nВи завжди можете зробити це через меню Житло.',
         'denied_notification':  '❌ *Оновлення реєстрації*\n\nВашу реєстрацію не схвалено.\n\n*Причина:* {reason}\n\nЗверніться до організаторів, якщо у вас є запитання.',
 
         # ── Housing ──────────────────────────────────────────────────────────

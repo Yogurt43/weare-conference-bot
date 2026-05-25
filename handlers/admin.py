@@ -37,6 +37,33 @@ def _require_owner(func):
     return wrapper
 
 
+# ─── Helpers ──────────────────────────────────────────────────────────────────
+
+async def _send_housing_prompt_if_needed(bot, participant: dict, lang: str) -> None:
+    """If participant needs housing and has no reservation yet, send house-selection buttons."""
+    if not participant.get('needs_housing'):
+        return
+    existing = db.get_reservation(participant['id'])
+    if existing:
+        return  # already picked a house
+    houses = db.get_houses_for_gender(participant.get('gender', 'M'))
+    if not houses:
+        return  # no houses configured yet
+    from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+    from utils import format_house_button
+    buttons = []
+    for house in houses:
+        taken = db.get_house_occupancy(house['id'])
+        label = format_house_button(house, taken, lang)
+        buttons.append([InlineKeyboardButton(label, callback_data=f"house_{house['id']}")])
+    await bot.send_message(
+        participant['chat_id'],
+        t(lang, 'housing_on_approval'),
+        reply_markup=InlineKeyboardMarkup(buttons),
+        parse_mode='Markdown',
+    )
+
+
 # ─── Registration review ───────────────────────────────────────────────────────
 
 @_require_admin
@@ -99,6 +126,7 @@ async def cmd_approve(update: Update, context: ContextTypes.DEFAULT_TYPE):
     db.update_participant(target_id, {'status': 'approved'})
     lang = utils.get_lang(participant)
     await context.bot.send_message(target_id, t(lang, 'approved_welcome'), parse_mode=ParseMode.MARKDOWN)
+    await _send_housing_prompt_if_needed(context.bot, participant, lang)
     await update.message.reply_text(t('en', 'admin_approved', name=participant.get('full_name', str(target_id))))
 
 
@@ -162,6 +190,7 @@ async def cb_admin_approve(update: Update, context: ContextTypes.DEFAULT_TYPE):
     db.update_participant(target_id, {'status': 'approved'})
     lang = utils.get_lang(participant)
     await context.bot.send_message(target_id, t(lang, 'approved_welcome'), parse_mode=ParseMode.MARKDOWN)
+    await _send_housing_prompt_if_needed(context.bot, participant, lang)
 
     admin_name = update.effective_user.first_name or "Admin"
     name = participant.get('full_name', str(target_id))
