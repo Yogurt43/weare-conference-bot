@@ -430,6 +430,10 @@ async def handle_setting_input(update: Update, context: ContextTypes.DEFAULT_TYP
 
         participant = db.get_participant(hold_target)
         if participant:
+            # Guard: abort if user was already approved by another admin
+            if participant.get('status') == 'approved':
+                await update.message.reply_text('⚠️ This user was approved — hold cancelled.')
+                return
             db.update_participant(hold_target, {'status': 'on_hold', 'denial_reason': reason})
             lang = utils.get_lang(participant)
             keyboard = InlineKeyboardMarkup([[
@@ -481,6 +485,10 @@ async def handle_setting_input(update: Update, context: ContextTypes.DEFAULT_TYP
 
         participant = db.get_participant(target_id)
         if participant:
+            # Guard: abort if user was already approved by another admin
+            if participant.get('status') == 'approved':
+                await update.message.reply_text('⚠️ This user was approved by another admin — deny cancelled.')
+                return
             db.update_participant(target_id, {'status': 'denied', 'denial_reason': reason})
             db.release_tentative_reservation(participant['id'])
             lang = utils.get_lang(participant)

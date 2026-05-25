@@ -51,8 +51,13 @@ async def _show_house_list(query, participant: dict, lang: str):
     buttons = []
     for house in houses:
         taken = db.get_house_occupancy(house['id'])
+        if taken >= house['capacity']:
+            continue
         label = utils.format_house_button(house, taken, lang)
         buttons.append([InlineKeyboardButton(label, callback_data=f"house_{house['id']}")])
+    if not buttons:
+        await query.edit_message_text(t(lang, 'no_houses_available'))
+        return
     await query.edit_message_text(
         t(lang, 'housing_list_header'),
         reply_markup=InlineKeyboardMarkup(buttons),
@@ -80,6 +85,9 @@ async def handle_house_select(update: Update, context: ContextTypes.DEFAULT_TYPE
     await query.answer()
     chat_id = update.effective_chat.id
     participant = db.get_participant(chat_id)
+    if not participant:
+        await query.edit_message_text(t('en', 'error_generic'))
+        return
     lang = utils.get_lang(participant)
 
     house_id = query.data.replace('house_', '')
@@ -111,10 +119,16 @@ async def handle_house_confirm(update: Update, context: ContextTypes.DEFAULT_TYP
     await query.answer()
     chat_id = update.effective_chat.id
     participant = db.get_participant(chat_id)
+    if not participant:
+        await query.edit_message_text(t('en', 'error_generic'))
+        return
     lang = utils.get_lang(participant)
 
     house_id = query.data.replace('houseconfirm_', '')
     house = db.get_house_by_id(house_id)
+    if not house:
+        await query.edit_message_text(t('en', 'error_generic'))
+        return
 
     # Double-check capacity (race condition guard)
     taken = db.get_house_occupancy(house_id)
@@ -133,6 +147,9 @@ async def handle_cancel_reservation(update: Update, context: ContextTypes.DEFAUL
     query = update.callback_query
     await query.answer()
     participant = db.get_participant(update.effective_chat.id)
+    if not participant:
+        await query.edit_message_text(t('en', 'error_generic'))
+        return
     lang = utils.get_lang(participant)
 
     db.delete_reservation(participant['id'])

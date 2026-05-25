@@ -8,6 +8,11 @@ import utils
 from strings import t
 from config import PAYMENT_LINK, GROUP_CHAT_ID, OWNER_ID, PRICE_WITH_HOUSING, PRICE_WITHOUT_HOUSING
 
+
+def _md_escape(s: str) -> str:
+    return s.replace('_', r'\_').replace('*', r'\*').replace('`', r'\`').replace('[', r'\[')
+
+
 # Conversation states
 LANG, NAME, AGE, GENDER, HOUSING_PREF, HOUSE_SELECT, PHONE, PAYMENT_STEP, RECEIPT = range(9)
 
@@ -376,19 +381,22 @@ async def handle_receipt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     housing_raw = participant.get('needs_housing')
     housing_str = '🏠 Needs housing' if housing_raw else '🏡 Has own housing'
 
+    name_safe     = _md_escape(name)
+    phone_safe    = _md_escape(str(phone_val))
+
     # Clickable contact: @username deep-link, or phone + tg://user fallback
     if username:
         contact_str = f"[@{username}](https://t.me/{username})"
     else:
-        contact_str = f"☎️ {phone_val} · [Open chat](tg://user?id={chat_id})"
+        contact_str = f"☎️ {phone_safe} · [Open chat](tg://user?id={chat_id})"
 
     is_resubmit = bool(participant.get('notify_chat_id'))
 
     if is_resubmit:
         caption = (
-            f"🔄 *Re-submission* — {name}\n"
+            f"🔄 *Re-submission* — {name_safe}\n"
             f"Previous submission already reviewed\n\n"
-            f"👤 *{name}* | {age}y | {gender}\n"
+            f"👤 *{name_safe}* | {age}y | {gender}\n"
             f"{contact_str}\n"
             f"{housing_str}\n"
             f"🆔 `{chat_id}`"
@@ -396,7 +404,7 @@ async def handle_receipt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     else:
         caption = (
             f"📥 *New registration pending review*\n\n"
-            f"👤 *{name}* | {age}y | {gender}\n"
+            f"👤 *{name_safe}* | {age}y | {gender}\n"
             f"{contact_str}\n"
             f"{housing_str}\n"
             f"🆔 `{chat_id}`"
@@ -521,7 +529,8 @@ def build_registration_handler() -> ConversationHandler:
                            MessageHandler(filters.TEXT & ~filters.COMMAND, _prompt_use_buttons)],
             PHONE:        [MessageHandler(filters.CONTACT, handle_phone)],
             PAYMENT_STEP: [],
-            RECEIPT:      [MessageHandler(filters.PHOTO | filters.Document.ALL, handle_receipt)],
+            RECEIPT:      [MessageHandler(filters.PHOTO | filters.Document.ALL, handle_receipt),
+                           MessageHandler(filters.TEXT & ~filters.COMMAND, _prompt_use_buttons)],
         },
         fallbacks=[CommandHandler('start', start)],
         allow_reentry=True,
