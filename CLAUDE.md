@@ -93,6 +93,20 @@ ALTER TABLE houses DROP COLUMN IF EXISTS notes;
 - Render auto-deploys on push — webhook has been flaky; use Manual Deploy if commit doesn't trigger
 - Render env vars: `BOT_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_ANON_KEY`, `WEBHOOK_URL`, `GROUP_CHAT_ID`, `PAYMENT_LINK`
 
+## Next Up — Participant Menus & Buttons
+**Goal**: improve the UX for approved participants navigating the bot.
+
+Things to review and improve with the user:
+- **Main menu layout** (`_show_main_menu` in `handlers/registration.py`) — current buttons: Housing, Schedule, Venue, Ask a Question, Message Coordinators. Review order, labels, icons.
+- **Housing flow** — after house selection, can they cancel and re-pick? Show current reservation clearly.
+- **Schedule / Venue** — currently just raw text set by admin via `/setschedule` / `/setvenue`. Consider formatting, back buttons.
+- **Q&A** — users submit questions blind. Consider confirming what they asked. Rate limit is 3 questions (configurable in `config.py` via `QA_RATE_LIMIT`).
+- **Coordinator messages** — same pattern as Q&A. No threading/reply flow yet.
+- **Back navigation** — most menus have no "back" button; user has to `/menu` to restart.
+- **`/menu` command** — works but only in private chat; consider whether to announce it better.
+
+Start by asking the user to walk through the participant experience and describe what they want to change.
+
 ## Known Gotchas
 - PTB handler groups: info text handler is group=1, admin text handler is group=0 — do not change this order or deny flow breaks
 - ConversationHandler is `persistent=False` — state lost on bot restart; users mid-flow may need to `/start` again
