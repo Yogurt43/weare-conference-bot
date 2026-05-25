@@ -103,15 +103,20 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Catches free-text from users who are in QA or coordinator message flow."""
     chat_id = update.effective_chat.id
 
+    # Housing button is caught by its own MessageHandler in group 0, but group 1
+    # still fires afterwards — ignore it here so it isn't treated as user input.
+    if update.message.text.strip() in _HOUSING_TEXTS:
+        return
+
     # Early-exit: skip DB calls entirely if this chat isn't waiting for input.
     # This prevents spurious Supabase errors from surfacing as "Something went wrong"
     # on admin hold/deny messages (which are handled in group 0, but group 1 still fires).
     if chat_id not in _awaiting_qa and chat_id not in _awaiting_msg:
-        return
-
-    # Housing button is caught by its own MessageHandler in group 0, but group 1
-    # still fires afterwards — ignore it here so it isn't treated as user input.
-    if update.message.text.strip() in _HOUSING_TEXTS:
+        # If the user is approved and typing random text, remind them to use the menu.
+        participant = db.get_participant(chat_id)
+        if participant and participant.get('status') == 'approved':
+            lang = utils.get_lang(participant)
+            await update.message.reply_text(t(lang, 'use_menu_buttons'))
         return
 
     participant = db.get_participant(chat_id)
