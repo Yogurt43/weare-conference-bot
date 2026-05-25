@@ -6,8 +6,9 @@ CONF_NAME = "WeAre"
 # ─── Telegram ─────────────────────────────────────────────────────────────────
 BOT_TOKEN    = os.environ["BOT_TOKEN"]
 WEBHOOK_URL  = os.environ["WEBHOOK_URL"]
-OWNER_ID     = 479515546
-ADMIN_IDS    = [479515546, 426569764]   # expandable via /addadmin at runtime
+OWNER_ID     = 479515546                          # primary (used as fallback notify chat)
+OWNER_IDS    = {479515546, 426569764}             # all owners
+ADMIN_IDS    = [479515546, 426569764]             # expandable via /addadmin at runtime
 
 # ─── Group for admin notifications (receipt alerts, Q&A forwards, etc.) ───────
 _group_chat_raw = os.getenv("GROUP_CHAT_ID", "0").strip()

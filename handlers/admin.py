@@ -6,7 +6,7 @@ from telegram.constants import ParseMode
 import db
 import utils
 from strings import t
-from config import OWNER_ID, GROUP_CHAT_ID
+from config import OWNER_ID, OWNER_IDS, GROUP_CHAT_ID
 
 # State for deny flow (keyed by admin USER id, works in groups too)
 _deny_pending:  dict[int, int]   = {}  # admin_user_id → target_chat_id
@@ -30,7 +30,7 @@ def _require_admin(func):
 def _require_owner(func):
     """Decorator: block non-owners from commands."""
     async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        if update.effective_user.id != OWNER_ID:
+        if update.effective_user.id not in OWNER_IDS:
             await update.message.reply_text(t('en', 'no_permission'))
             return
         return await func(update, context)
@@ -444,7 +444,8 @@ async def cmd_removeuser(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @_require_admin
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
+    is_owner = update.effective_user.id in OWNER_IDS
+    text = (
         "*Admin commands:*\n\n"
         "📋 *Registration*\n"
         "/pending — list pending registrations\n"
@@ -463,13 +464,16 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/setvenue — set venue text\n"
         "/pause `<housing|qa|messages>` — pause a feature\n"
         "/resume `<housing|qa|messages>` — resume a feature\n"
-        "/status — show bot stats\n\n"
-        "👑 *Owner only*\n"
-        "/addadmin `<id>` — add an admin\n"
-        "/removeuser `<id>` — delete a participant\n"
-        "/testsetup — reset your own registration for testing\n",
-        parse_mode='Markdown'
+        "/status — show bot stats"
     )
+    if is_owner:
+        text += (
+            "\n\n👑 *Owner only*\n"
+            "/addadmin `<id>` — add an admin\n"
+            "/removeuser `<id>` — delete a participant\n"
+            "/testsetup — reset your own registration for testing"
+        )
+    await update.message.reply_text(text, parse_mode='Markdown')
 
 
 @_require_owner
