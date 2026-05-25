@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: conferencebot2
+    name: weare-conference-bot
     runtime: python
     buildCommand: pip install -r requirements.txt
     startCommand: python bot.py
