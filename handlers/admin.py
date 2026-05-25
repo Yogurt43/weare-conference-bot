@@ -1,4 +1,6 @@
 # handlers/admin.py
+import logging
+
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ContextTypes, CommandHandler, CallbackQueryHandler, MessageHandler, filters
 from telegram.constants import ParseMode
@@ -8,6 +10,8 @@ import utils
 from strings import t
 from config import OWNER_ID, OWNER_IDS, GROUP_CHAT_ID
 from handlers.registration import _send_main_menu_to
+
+logger = logging.getLogger(__name__)
 
 # State for deny flow (keyed by admin USER id, works in groups too)
 _deny_pending:  dict[int, int]   = {}  # admin_user_id → target_chat_id
@@ -437,41 +441,52 @@ async def handle_setting_input(update: Update, context: ContextTypes.DEFAULT_TYP
                 chat_part, msg_part = stored_msg.split(':', 1)
                 msg_info = (int(chat_part), int(msg_part))
 
-        db.set_setting(f'hold_pending_{admin_id}', '')
-        db.set_setting(f'hold_msg_{admin_id}', '')
+        # Clear pending state — best-effort, don't let a DB failure block the flow
+        try:
+            db.set_setting(f'hold_pending_{admin_id}', '')
+            db.set_setting(f'hold_msg_{admin_id}', '')
+        except Exception:
+            logger.exception('Failed to clear hold_pending DB state for admin %s', admin_id)
 
-        participant = db.get_participant(hold_target)
-        if participant:
-            # Guard: abort if user was already approved by another admin
-            if participant.get('status') == 'approved':
-                await update.message.reply_text('⚠️ This user was approved — hold cancelled.')
-                return
-            db.update_participant(hold_target, {'status': 'on_hold', 'denial_reason': reason})
-            lang = utils.get_lang(participant)
-            keyboard = InlineKeyboardMarkup([[
-                InlineKeyboardButton(t(lang, 'btn_have_question'), callback_data='pre_approval_question')
-            ]])
-            try:
-                await context.bot.send_message(
-                    hold_target,
-                    t(lang, 'on_hold_notification', reason=reason),
-                    reply_markup=keyboard,
-                    parse_mode=ParseMode.MARKDOWN,
-                )
-            except Exception:
-                pass  # user may have blocked the bot; DB state already updated
-            name = participant.get('full_name', str(hold_target))
-            if msg_info:
+        try:
+            participant = db.get_participant(hold_target)
+            if participant:
+                # Guard: abort if user was already approved by another admin
+                if participant.get('status') == 'approved':
+                    await update.message.reply_text('⚠️ This user was approved — hold cancelled.')
+                    return
+                db.update_participant(hold_target, {'status': 'on_hold', 'denial_reason': reason})
+                lang = utils.get_lang(participant)
+                keyboard = InlineKeyboardMarkup([[
+                    InlineKeyboardButton(t(lang, 'btn_have_question'), callback_data='pre_approval_question')
+                ]])
                 try:
-                    await context.bot.edit_message_caption(
-                        chat_id=msg_info[0],
-                        message_id=msg_info[1],
-                        caption=f"⏸ *On Hold* — {name}\n_{reason}_",
+                    await context.bot.send_message(
+                        hold_target,
+                        t(lang, 'on_hold_notification', reason=reason),
+                        reply_markup=keyboard,
                         parse_mode=ParseMode.MARKDOWN,
                     )
                 except Exception:
-                    pass
-            await update.message.reply_text(t('en', 'admin_held', name=name))
+                    pass  # user may have blocked the bot; DB state already updated
+                name = participant.get('full_name', str(hold_target))
+                if msg_info:
+                    try:
+                        await context.bot.edit_message_caption(
+                            chat_id=msg_info[0],
+                            message_id=msg_info[1],
+                            caption=f"⏸ *On Hold* — {name}\n_{reason}_",
+                            parse_mode=ParseMode.MARKDOWN,
+                        )
+                    except Exception:
+                        pass
+                await update.message.reply_text(t('en', 'admin_held', name=name))
+        except Exception:
+            logger.exception('Hold flow failed for target %s', hold_target)
+            try:
+                await update.message.reply_text('⚠️ Something went wrong applying the hold. Check logs and retry.')
+            except Exception:
+                pass
         return
 
     # ── Deny reason flow ─────────────────────────────────────────────────────
@@ -494,39 +509,49 @@ async def handle_setting_input(update: Update, context: ContextTypes.DEFAULT_TYP
                 chat_part, msg_part = stored_msg.split(':', 1)
                 msg_info = (int(chat_part), int(msg_part))
 
-        # Clear DB entries
-        db.set_setting(f'deny_pending_{admin_id}', '')
-        db.set_setting(f'deny_msg_{admin_id}', '')
+        # Clear DB entries — best-effort, don't let a failure block the flow
+        try:
+            db.set_setting(f'deny_pending_{admin_id}', '')
+            db.set_setting(f'deny_msg_{admin_id}', '')
+        except Exception:
+            logger.exception('Failed to clear deny_pending DB state for admin %s', admin_id)
 
-        participant = db.get_participant(target_id)
-        if participant:
-            # Guard: abort if user was already approved by another admin
-            if participant.get('status') == 'approved':
-                await update.message.reply_text('⚠️ This user was approved by another admin — deny cancelled.')
-                return
-            db.update_participant(target_id, {'status': 'denied', 'denial_reason': reason})
-            db.release_tentative_reservation(participant['id'])
-            lang = utils.get_lang(participant)
-            try:
-                await context.bot.send_message(
-                    target_id,
-                    t(lang, 'denied_notification', reason=reason),
-                    parse_mode=ParseMode.MARKDOWN,
-                )
-            except Exception:
-                pass  # user may have blocked the bot; DB state already updated
-            name = participant.get('full_name', str(target_id))
-            if msg_info:
+        try:
+            participant = db.get_participant(target_id)
+            if participant:
+                # Guard: abort if user was already approved by another admin
+                if participant.get('status') == 'approved':
+                    await update.message.reply_text('⚠️ This user was approved by another admin — deny cancelled.')
+                    return
+                db.update_participant(target_id, {'status': 'denied', 'denial_reason': reason})
+                db.release_tentative_reservation(participant['id'])
+                lang = utils.get_lang(participant)
                 try:
-                    await context.bot.edit_message_caption(
-                        chat_id=msg_info[0],
-                        message_id=msg_info[1],
-                        caption=f"❌ *Denied* — {name}\nReason: {reason}",
+                    await context.bot.send_message(
+                        target_id,
+                        t(lang, 'denied_notification', reason=reason),
                         parse_mode=ParseMode.MARKDOWN,
                     )
                 except Exception:
-                    pass
-            await update.message.reply_text(t('en', 'admin_denied', name=name))
+                    pass  # user may have blocked the bot; DB state already updated
+                name = participant.get('full_name', str(target_id))
+                if msg_info:
+                    try:
+                        await context.bot.edit_message_caption(
+                            chat_id=msg_info[0],
+                            message_id=msg_info[1],
+                            caption=f"❌ *Denied* — {name}\nReason: {reason}",
+                            parse_mode=ParseMode.MARKDOWN,
+                        )
+                    except Exception:
+                        pass
+                await update.message.reply_text(t('en', 'admin_denied', name=name))
+        except Exception:
+            logger.exception('Deny flow failed for target %s', target_id)
+            try:
+                await update.message.reply_text('⚠️ Something went wrong applying the denial. Check logs and retry.')
+            except Exception:
+                pass
         return
 
     # ── Schedule / venue setting flow ─────────────────────────────────────────

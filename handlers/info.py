@@ -91,6 +91,13 @@ async def handle_coordinator_pre_approval(update: Update, context: ContextTypes.
 async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Catches free-text from users who are in QA or coordinator message flow."""
     chat_id = update.effective_chat.id
+
+    # Early-exit: skip DB calls entirely if this chat isn't waiting for input.
+    # This prevents spurious Supabase errors from surfacing as "Something went wrong"
+    # on admin hold/deny messages (which are handled in group 0, but group 1 still fires).
+    if chat_id not in _awaiting_qa and chat_id not in _awaiting_msg:
+        return
+
     participant = db.get_participant(chat_id)
     lang = utils.get_lang(participant)
     text = update.message.text.strip()
