@@ -2,11 +2,11 @@
 import asyncio
 import threading
 import logging
-import traceback
+import json
 
 from flask import Flask, request, abort
 from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
 from config import BOT_TOKEN, WEBHOOK_URL
 from handlers.registration import build_registration_handler, menu_command
@@ -83,27 +83,6 @@ def webhook():
 @flask_app.route('/health', methods=['GET'])
 def health():
     return 'ok', 200
-
-
-async def _error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Log all unhandled exceptions so we can see them in Render logs."""
-    logger.error("Unhandled exception: %s", traceback.format_exc())
-
-
-async def _session_lost_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Catch messages from users who aren't in an active conversation (e.g. after a restart)."""
-    if update.message:
-        await update.message.reply_text(
-            "⚠️ Your session was interrupted. Please use /start to continue.\n\n"
-            "⚠️ Ваш сеанс було перервано. Будь ласка, використайте /start, щоб продовжити."
-        )
-
-
-ptb_app.add_error_handler(_error_handler)
-# Group 1 = lower priority than all registered handlers; only fires if nothing else matched
-ptb_app.add_handler(
-    MessageHandler(filters.ALL, _session_lost_handler), group=1
-)
 
 
 if __name__ == '__main__':
