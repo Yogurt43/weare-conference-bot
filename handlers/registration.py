@@ -61,6 +61,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             )
             # Jump straight to receipt upload — they don't redo the whole form
             db.update_participant(chat_id, {'status': 'pending_payment'})
+            # Housing question is mandatory — ask it if not yet answered
+            if participant.get('needs_housing') is None:
+                await update.message.reply_text(
+                    t(lang, 'housing_prompt'),
+                    reply_markup=_housing_keyboard(lang),
+                )
+                return HOUSING_PREF
             return RECEIPT
 
     # New user — start language selection
@@ -202,7 +209,7 @@ async def handle_receipt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     username      = participant.get('username', '')
     uname_str     = f"@{username}" if username else f"ID: {chat_id}"
     housing_raw   = participant.get('needs_housing')
-    housing_str   = '🏠 Needs housing' if housing_raw is True else ('🏡 Has own housing' if housing_raw is False else '❓ Housing: not answered')
+    housing_str   = '🏠 Needs housing' if housing_raw else '🏡 Has own housing'
     caption = (
         f"📥 *New registration pending review*\n\n"
         f"👤 *{name}* | {age}y | {gender}\n"
