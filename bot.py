@@ -2,11 +2,11 @@
 import asyncio
 import threading
 import logging
-import json
+import traceback
 
 from flask import Flask, request, abort
 from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
 from config import BOT_TOKEN, WEBHOOK_URL
 from handlers.registration import build_registration_handler, menu_command
@@ -54,6 +54,18 @@ for handler in get_info_handlers():
 
 for handler in get_admin_handlers():
     ptb_app.add_handler(handler)
+
+
+async def _error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Log all exceptions and tell the user to retry the current step."""
+    logger.error("Exception in handler:\n%s", traceback.format_exc())
+    if isinstance(update, Update) and update.effective_message:
+        await update.effective_message.reply_text(
+            "❌ Something went wrong. Please try again."
+        )
+
+
+ptb_app.add_error_handler(_error_handler)
 
 # Initialize PTB
 run_async(ptb_app.initialize())

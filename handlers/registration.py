@@ -161,6 +161,8 @@ async def handle_receipt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return RECEIPT
 
     participant = db.get_participant(chat_id)
+    if not participant:
+        raise RuntimeError(f"handle_receipt: participant not found for chat_id={chat_id}")
     db.save_receipt(participant['id'], file_id)
     db.update_participant(chat_id, {'status': 'pending_approval'})
 
