@@ -8,6 +8,17 @@ import utils
 from strings import t
 from config import QA_RATE_LIMIT, GROUP_CHAT_ID, PRICE_WITH_HOUSING, PRICE_WITHOUT_HOUSING
 
+# Reply-keyboard button texts for both languages.
+# The schedule/venue/qa/coordinator buttons are caught by their own MessageHandlers
+# in group 1 (before the catch-all), so only housing needs to be guarded here.
+_HOUSING_TEXTS = {t('en', 'btn_housing'), t('uk', 'btn_housing')}
+
+# All menu button texts used to build MessageHandler filters (schedule, venue, qa, coord)
+_SCHEDULE_TEXTS = [t('en', 'btn_schedule'), t('uk', 'btn_schedule')]
+_VENUE_TEXTS    = [t('en', 'btn_venue'),    t('uk', 'btn_venue')]
+_QA_TEXTS       = [t('en', 'btn_qa'),       t('uk', 'btn_qa')]
+_COORD_TEXTS    = [t('en', 'btn_coordinator'), t('uk', 'btn_coordinator')]
+
 
 def _md_escape(s: str) -> str:
     return s.replace('_', r'\_').replace('*', r'\*').replace('`', r'\`').replace('[', r'\[')
@@ -19,56 +30,56 @@ _awaiting_msg: set[int] = set()
 
 
 async def handle_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
     participant = db.get_participant(update.effective_chat.id)
+    if not participant or participant.get('status') != 'approved':
+        return
     lang = utils.get_lang(participant)
     text = db.get_setting('schedule_text')
-    await query.edit_message_text(text or t(lang, 'no_schedule'), parse_mode=ParseMode.MARKDOWN)
+    await update.message.reply_text(text or t(lang, 'no_schedule'), parse_mode=ParseMode.MARKDOWN)
 
 
 async def handle_venue(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
     participant = db.get_participant(update.effective_chat.id)
+    if not participant or participant.get('status') != 'approved':
+        return
     lang = utils.get_lang(participant)
     text = db.get_setting('venue_text')
-    await query.edit_message_text(text or t(lang, 'no_venue'), parse_mode=ParseMode.MARKDOWN)
+    await update.message.reply_text(text or t(lang, 'no_venue'), parse_mode=ParseMode.MARKDOWN)
 
 
 async def handle_qa_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
     chat_id = update.effective_chat.id
     participant = db.get_participant(chat_id)
+    if not participant or participant.get('status') != 'approved':
+        return
     lang = utils.get_lang(participant)
 
     if db.is_paused('qa'):
-        await query.edit_message_text(t(lang, 'qa_paused'))
+        await update.message.reply_text(t(lang, 'qa_paused'))
         return
 
     count = db.count_questions_by_participant(participant['id'])
     if count >= QA_RATE_LIMIT:
-        await query.edit_message_text(t(lang, 'qa_rate_limited', limit=QA_RATE_LIMIT))
+        await update.message.reply_text(t(lang, 'qa_rate_limited', limit=QA_RATE_LIMIT))
         return
 
     _awaiting_qa.add(chat_id)
-    await query.edit_message_text(t(lang, 'qa_prompt'))
+    await update.message.reply_text(t(lang, 'qa_prompt'))
 
 
 async def handle_coordinator_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
     chat_id = update.effective_chat.id
     participant = db.get_participant(chat_id)
+    if not participant or participant.get('status') != 'approved':
+        return
     lang = utils.get_lang(participant)
 
     if db.is_paused('messages'):
-        await query.edit_message_text(t(lang, 'messages_paused'))
+        await update.message.reply_text(t(lang, 'messages_paused'))
         return
 
     _awaiting_msg.add(chat_id)
-    await query.edit_message_text(t(lang, 'coordinator_prompt'))
+    await update.message.reply_text(t(lang, 'coordinator_prompt'))
 
 
 async def handle_coordinator_pre_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -96,6 +107,11 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # This prevents spurious Supabase errors from surfacing as "Something went wrong"
     # on admin hold/deny messages (which are handled in group 0, but group 1 still fires).
     if chat_id not in _awaiting_qa and chat_id not in _awaiting_msg:
+        return
+
+    # Housing button is caught by its own MessageHandler in group 0, but group 1
+    # still fires afterwards — ignore it here so it isn't treated as user input.
+    if update.message.text.strip() in _HOUSING_TEXTS:
         return
 
     participant = db.get_participant(chat_id)
@@ -187,10 +203,14 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def get_info_handlers() -> list:
     return [
-        CallbackQueryHandler(handle_schedule,                  pattern='^menu_schedule$'),
-        CallbackQueryHandler(handle_venue,                     pattern='^menu_venue$'),
-        CallbackQueryHandler(handle_qa_start,                  pattern='^menu_qa$'),
-        CallbackQueryHandler(handle_coordinator_start,         pattern='^menu_coordinator$'),
+        # Reply-keyboard menu buttons — specific text matches must come BEFORE
+        # the catch-all text handler so they win within group 1.
+        MessageHandler(filters.Text(_SCHEDULE_TEXTS), handle_schedule),
+        MessageHandler(filters.Text(_VENUE_TEXTS),    handle_venue),
+        MessageHandler(filters.Text(_QA_TEXTS),       handle_qa_start),
+        MessageHandler(filters.Text(_COORD_TEXTS),    handle_coordinator_start),
+        # Pre-approval "Have a question?" — still an inline button during registration
         CallbackQueryHandler(handle_coordinator_pre_approval,  pattern='^pre_approval_question$'),
+        # Catch-all free-text (Q&A answers, coordinator messages)
         MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_input),
     ]

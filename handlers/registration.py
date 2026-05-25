@@ -480,34 +480,29 @@ def _get_lang(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     return lang
 
 
+def _main_menu_keyboard(lang: str) -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup([
+        [KeyboardButton(t(lang, 'btn_housing'))],
+        [KeyboardButton(t(lang, 'btn_schedule')), KeyboardButton(t(lang, 'btn_venue'))],
+        [KeyboardButton(t(lang, 'btn_qa'))],
+        [KeyboardButton(t(lang, 'btn_coordinator'))],
+    ], resize_keyboard=True, input_field_placeholder="Choose an option…")
+
+
 async def _show_main_menu(update: Update, lang: str):
-    keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton(t(lang, 'btn_housing'), callback_data='menu_housing')],
-        [InlineKeyboardButton(t(lang, 'btn_schedule'), callback_data='menu_schedule'),
-         InlineKeyboardButton(t(lang, 'btn_venue'), callback_data='menu_venue')],
-        [InlineKeyboardButton(t(lang, 'btn_qa'), callback_data='menu_qa')],
-        [InlineKeyboardButton(t(lang, 'btn_coordinator'), callback_data='menu_coordinator')],
-    ])
     await update.message.reply_text(
         t(lang, 'main_menu'),
-        reply_markup=keyboard,
+        reply_markup=_main_menu_keyboard(lang),
         parse_mode=ParseMode.MARKDOWN
     )
 
 
 async def _send_main_menu_to(bot, chat_id: int, lang: str) -> None:
     """Send the main menu as a new message. Used by admin approval (no Update object)."""
-    keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton(t(lang, 'btn_housing'), callback_data='menu_housing')],
-        [InlineKeyboardButton(t(lang, 'btn_schedule'), callback_data='menu_schedule'),
-         InlineKeyboardButton(t(lang, 'btn_venue'), callback_data='menu_venue')],
-        [InlineKeyboardButton(t(lang, 'btn_qa'), callback_data='menu_qa')],
-        [InlineKeyboardButton(t(lang, 'btn_coordinator'), callback_data='menu_coordinator')],
-    ])
     await bot.send_message(
         chat_id,
         t(lang, 'main_menu'),
-        reply_markup=keyboard,
+        reply_markup=_main_menu_keyboard(lang),
         parse_mode=ParseMode.MARKDOWN,
     )
 

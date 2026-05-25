@@ -1,22 +1,27 @@
 # handlers/housing.py
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
-from telegram.ext import ContextTypes, CallbackQueryHandler
+from telegram.ext import ContextTypes, CallbackQueryHandler, MessageHandler, filters
 from telegram.constants import ParseMode
 
 import db
 import utils
 from strings import t
 
+# Button texts for both languages — used to build the MessageHandler filter
+_HOUSING_TEXTS = [t('en', 'btn_housing'), t('uk', 'btn_housing')]
+
 
 async def handle_housing_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
     chat_id = update.effective_chat.id
     participant = db.get_participant(chat_id)
     lang = utils.get_lang(participant)
 
+    # Only approved participants can use the persistent menu
+    if not participant or participant.get('status') != 'approved':
+        return
+
     if db.is_paused('housing'):
-        await query.edit_message_text(t(lang, 'housing_paused'))
+        await update.message.reply_text(t(lang, 'housing_paused'))
         return
 
     # Check if already reserved
@@ -26,7 +31,7 @@ async def handle_housing_menu(update: Update, context: ContextTypes.DEFAULT_TYPE
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton(t(lang, 'btn_cancel_reservation'), callback_data='housing_cancel')]
         ])
-        await query.edit_message_text(
+        await update.message.reply_text(
             t(lang, 'current_reservation', name=house['name']),
             reply_markup=keyboard,
             parse_mode=ParseMode.MARKDOWN
@@ -38,7 +43,7 @@ async def handle_housing_menu(update: Update, context: ContextTypes.DEFAULT_TYPE
         [InlineKeyboardButton(t(lang, 'btn_housing_yes'), callback_data='menu_housing_yes')],
         [InlineKeyboardButton(t(lang, 'btn_housing_no'),  callback_data='menu_housing_no')],
     ])
-    await query.edit_message_text(t(lang, 'housing_prompt'), reply_markup=keyboard)
+    await update.message.reply_text(t(lang, 'housing_prompt'), reply_markup=keyboard)
 
 
 async def _show_house_list(query, participant: dict, lang: str):
@@ -158,7 +163,9 @@ async def handle_cancel_reservation(update: Update, context: ContextTypes.DEFAUL
 
 def get_housing_handlers() -> list:
     return [
-        CallbackQueryHandler(handle_housing_menu,      pattern='^menu_housing$'),
+        # Entry point: reply-keyboard button press → message with button text
+        MessageHandler(filters.Text(_HOUSING_TEXTS), handle_housing_menu),
+        # Sub-flow: inline buttons inside the housing sub-menu message
         CallbackQueryHandler(handle_housing_yes,       pattern='^menu_housing_yes$'),
         CallbackQueryHandler(handle_housing_no,        pattern='^menu_housing_no$'),
         CallbackQueryHandler(handle_house_select,      pattern='^house_[0-9a-f-]+$'),
