@@ -22,8 +22,7 @@ _remove_pending: dict[int, str] = {} # admin_chat_id → house_name
 def _require_admin(func):
     """Decorator: block non-admins from commands."""
     async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        chat_id = update.effective_chat.id
-        if not utils.is_admin(chat_id):
+        if not utils.is_admin(update.effective_user.id):
             await update.message.reply_text(t('en', 'no_permission'))
             return
         return await func(update, context)
@@ -33,7 +32,7 @@ def _require_admin(func):
 def _require_owner(func):
     """Decorator: block non-owners from commands."""
     async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        if update.effective_chat.id != OWNER_ID:
+        if update.effective_user.id != OWNER_ID:
             await update.message.reply_text(t('en', 'no_permission'))
             return
         return await func(update, context)
