@@ -24,16 +24,12 @@ async def handle_housing_menu(update: Update, context: ContextTypes.DEFAULT_TYPE
         await update.message.reply_text(t(lang, 'housing_paused'))
         return
 
-    # Check if already reserved
+    # Already has a reservation — show it, no changes allowed
     reservation = db.get_reservation(participant['id'])
     if reservation:
         house = reservation['houses']
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton(t(lang, 'btn_cancel_reservation'), callback_data='housing_cancel')]
-        ])
         await update.message.reply_text(
             t(lang, 'current_reservation', name=house['name']),
-            reply_markup=keyboard,
             parse_mode=ParseMode.MARKDOWN
         )
         return
@@ -110,7 +106,6 @@ async def handle_house_select(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton(t(lang, 'btn_confirm_yes'), callback_data=f'houseconfirm_{house_id}')],
-        [InlineKeyboardButton(t(lang, 'btn_confirm_no'), callback_data='menu_housing')],
     ])
     await query.edit_message_text(
         t(lang, 'house_confirm', name=house['name']),
@@ -148,19 +143,6 @@ async def handle_house_confirm(update: Update, context: ContextTypes.DEFAULT_TYP
     )
 
 
-async def handle_cancel_reservation(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    participant = db.get_participant(update.effective_chat.id)
-    if not participant:
-        await query.edit_message_text(t('en', 'error_generic'))
-        return
-    lang = utils.get_lang(participant)
-
-    db.delete_reservation(participant['id'])
-    await query.edit_message_text(t(lang, 'reservation_cancelled'))
-
-
 def get_housing_handlers() -> list:
     return [
         # Entry point: reply-keyboard button press → message with button text
@@ -170,5 +152,4 @@ def get_housing_handlers() -> list:
         CallbackQueryHandler(handle_housing_no,        pattern='^menu_housing_no$'),
         CallbackQueryHandler(handle_house_select,      pattern='^house_[0-9a-f-]+$'),
         CallbackQueryHandler(handle_house_confirm,     pattern='^houseconfirm_[0-9a-f-]+$'),
-        CallbackQueryHandler(handle_cancel_reservation,pattern='^housing_cancel$'),
     ]

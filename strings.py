@@ -93,11 +93,8 @@ S = {
         'house_full_msg':       '😔 That house is full. Please choose another.',
         'house_confirm':        '🏡 Reserve a spot at *{name}*?',
         'btn_confirm_yes':      '✅ Yes, reserve',
-        'btn_confirm_no':       '❌ Cancel',
         'house_reserved':       '✅ You\'re reserved at *{name}*!',
-        'current_reservation':  '🏡 Your current reservation: *{name}*\n\nWould you like to cancel it?',
-        'btn_cancel_reservation': '❌ Cancel Reservation',
-        'reservation_cancelled': '✅ Your reservation has been cancelled. You can reserve a new spot anytime.',
+        'current_reservation':  '🏡 You\'re reserved at *{name}*.',
 
         # ── Schedule ─────────────────────────────────────────────────────────
         'no_schedule':          '📅 The schedule hasn\'t been posted yet. Check back soon!',
@@ -255,11 +252,8 @@ S = {
         'house_full_msg':       '😔 Цей будинок заповнений. Будь ласка, оберіть інший.',
         'house_confirm':        '🏡 Забронювати місце в *{name}*?',
         'btn_confirm_yes':      '✅ Так, бронюю',
-        'btn_confirm_no':       '❌ Скасувати',
         'house_reserved':       '✅ Ви заброньовані в *{name}*!',
-        'current_reservation':  '🏡 Ваше поточне бронювання: *{name}*\n\nБажаєте скасувати?',
-        'btn_cancel_reservation': '❌ Скасувати бронювання',
-        'reservation_cancelled': '✅ Ваше бронювання скасовано. Ви можете забронювати нове місце будь-коли.',
+        'current_reservation':  '🏡 Ви заброньовані в *{name}*.',
 
         # ── Schedule ─────────────────────────────────────────────────────────
         'no_schedule':          '📅 Розклад ще не опубліковано. Перевірте пізніше!',
