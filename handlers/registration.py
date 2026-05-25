@@ -6,7 +6,7 @@ from telegram.constants import ParseMode
 import db
 import utils
 from strings import t
-from config import PAYMENT_LINK, GROUP_CHAT_ID
+from config import PAYMENT_LINK, GROUP_CHAT_ID, OWNER_ID
 
 # Conversation states
 LANG, NAME, AGE, GENDER, PHONE, PAYMENT_STEP, RECEIPT = range(7)
@@ -159,22 +159,31 @@ async def handle_receipt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     await update.message.reply_text(t(lang, 'receipt_submitted'))
 
-    # Notify admin group
-    if GROUP_CHAT_ID:
-        name = participant.get('full_name', 'Unknown')
-        age = participant.get('age', '?')
-        gender = participant.get('gender', '?')
-        username = participant.get('username', '')
-        uname_str = f"@{username}" if username else f"ID: {chat_id}"
-        admin_text = (
-            f"📥 *New registration pending review*\n\n"
-            f"👤 {name} | {age}y | {gender}\n"
-            f"📱 {uname_str}\n"
-            f"🆔 `{chat_id}`\n\n"
-            f"Use `/approve {chat_id}` or `/deny {chat_id} <reason>`\n"
-            f"Use `/viewreceipt {chat_id}` to see the receipt."
-        )
-        await context.bot.send_message(GROUP_CHAT_ID, admin_text, parse_mode=ParseMode.MARKDOWN)
+    # Notify admin group/owner with receipt photo + inline buttons
+    notify_chat = GROUP_CHAT_ID or OWNER_ID
+    name     = participant.get('full_name', 'Unknown')
+    age      = participant.get('age', '?')
+    gender   = 'M' if participant.get('gender') == 'M' else 'F'
+    phone    = participant.get('phone', '—')
+    username = participant.get('username', '')
+    uname_str = f"@{username}" if username else f"ID: {chat_id}"
+    caption = (
+        f"📥 *New registration pending review*\n\n"
+        f"👤 *{name}* | {age}y | {gender}\n"
+        f"📱 {uname_str} | ☎️ {phone}\n"
+        f"🆔 `{chat_id}`"
+    )
+    keyboard = InlineKeyboardMarkup([[
+        InlineKeyboardButton("✅ Approve", callback_data=f"admin_approve_{chat_id}"),
+        InlineKeyboardButton("❌ Deny",    callback_data=f"admin_deny_{chat_id}"),
+    ]])
+    await context.bot.send_photo(
+        notify_chat,
+        file_id,
+        caption=caption,
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=keyboard,
+    )
 
     return ConversationHandler.END
 

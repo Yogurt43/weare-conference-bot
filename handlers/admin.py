@@ -8,10 +8,11 @@ import utils
 from strings import t
 from config import OWNER_ID, GROUP_CHAT_ID
 
-# State for deny flow
-_deny_pending: dict[int, int] = {}   # admin_chat_id → target_chat_id
+# State for deny flow (keyed by admin USER id, works in groups too)
+_deny_pending:  dict[int, int]   = {}  # admin_user_id → target_chat_id
+_deny_msg_info: dict[int, tuple] = {}  # admin_user_id → (chat_id, message_id)
 # State for setschedule/setvenue
-_setting_field: dict[int, str] = {}  # admin_chat_id → field name
+_setting_field: dict[int, str]   = {}  # admin_user_id → field name
 # Nuke confirmation steps
 _nuke_step: dict[int, int] = {}      # admin_chat_id → step (1 or 2)
 # Confirmremove pending
@@ -48,18 +49,44 @@ async def cmd_pending(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(t('en', 'admin_no_pending'))
         return
 
-    text = t('en', 'admin_pending_header', count=len(pending))
-    for p in pending:
-        uname = p.get('username') or '—'
-        gender_label = 'M' if p.get('gender') == 'M' else 'F'
-        text += t('en', 'admin_pending_entry',
-                  name=p.get('full_name', '?'),
-                  age=p.get('age', '?'),
-                  gender=gender_label,
-                  username=uname)
-        text += f"`/approve {p['chat_id']}` | `/deny {p['chat_id']} reason` | `/viewreceipt {p['chat_id']}`\n\n"
+    count = len(pending)
+    await update.message.reply_text(
+        f"⏳ *{count} pending registration{'s' if count != 1 else ''}:*",
+        parse_mode=ParseMode.MARKDOWN,
+    )
 
-    await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+    for p in pending:
+        cid      = p['chat_id']
+        name     = p.get('full_name', '?')
+        age      = p.get('age', '?')
+        gender   = 'M' if p.get('gender') == 'M' else 'F'
+        phone    = p.get('phone', '—')
+        username = p.get('username', '')
+        uname_str = f"@{username}" if username else f"ID: {cid}"
+        caption = (
+            f"👤 *{name}* | {age}y | {gender}\n"
+            f"📱 {uname_str} | ☎️ {phone}\n"
+            f"🆔 `{cid}`"
+        )
+        keyboard = InlineKeyboardMarkup([[
+            InlineKeyboardButton("✅ Approve", callback_data=f"admin_approve_{cid}"),
+            InlineKeyboardButton("❌ Deny",    callback_data=f"admin_deny_{cid}"),
+        ]])
+        receipt = db.get_latest_receipt(p['id'])
+        if receipt:
+            await context.bot.send_photo(
+                update.effective_chat.id,
+                receipt['file_id'],
+                caption=caption,
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=keyboard,
+            )
+        else:
+            await update.message.reply_text(
+                caption + "\n\n⚠️ _No receipt on file_",
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=keyboard,
+            )
 
 
 @_require_admin
@@ -115,6 +142,68 @@ async def cmd_viewreceipt(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     await context.bot.send_photo(update.effective_chat.id, receipt['file_id'],
                                   caption=f"Receipt for {participant.get('full_name', target_id)}")
+
+
+async def cb_admin_approve(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """✅ Approve button on a registration notification."""
+    query = update.callback_query
+    admin_user_id = update.effective_user.id
+    if not utils.is_admin(admin_user_id):
+        await query.answer("No permission.", show_alert=True)
+        return
+    await query.answer()
+
+    target_id   = int(query.data.split('_')[-1])
+    participant = db.get_participant(target_id)
+    if not participant:
+        await query.answer("User not found.", show_alert=True)
+        return
+    if participant.get('status') == 'approved':
+        await query.answer("Already approved.", show_alert=True)
+        return
+
+    db.update_participant(target_id, {'status': 'approved'})
+    lang = utils.get_lang(participant)
+    await context.bot.send_message(target_id, t(lang, 'approved_welcome'), parse_mode=ParseMode.MARKDOWN)
+
+    admin_name = update.effective_user.first_name or "Admin"
+    name = participant.get('full_name', str(target_id))
+    try:
+        await query.edit_message_caption(
+            f"✅ *Approved* — {name}\n_by {admin_name}_",
+            parse_mode=ParseMode.MARKDOWN,
+        )
+    except Exception:
+        pass
+
+
+async def cb_admin_deny_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """❌ Deny button — prompt admin for a reason."""
+    query = update.callback_query
+    admin_user_id = update.effective_user.id
+    if not utils.is_admin(admin_user_id):
+        await query.answer("No permission.", show_alert=True)
+        return
+    await query.answer()
+
+    target_id   = int(query.data.split('_')[-1])
+    participant = db.get_participant(target_id)
+    if not participant:
+        await query.answer("User not found.", show_alert=True)
+        return
+    if participant.get('status') == 'denied':
+        await query.answer("Already denied.", show_alert=True)
+        return
+
+    _deny_pending[admin_user_id]  = target_id
+    _deny_msg_info[admin_user_id] = (query.message.chat_id, query.message.message_id)
+
+    name = participant.get('full_name', str(target_id))
+    await context.bot.send_message(
+        query.message.chat_id,
+        f"✏️ Type the denial reason for *{name}*:",
+        parse_mode=ParseMode.MARKDOWN,
+    )
 
 
 @_require_admin
@@ -306,21 +395,51 @@ async def cmd_resume(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @_require_admin
 async def cmd_setschedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    _setting_field[update.effective_chat.id] = 'schedule'
+    _setting_field[update.effective_user.id] = 'schedule'
     await update.message.reply_text(t('en', 'admin_set_prompt', field='schedule'))
 
 
 @_require_admin
 async def cmd_setvenue(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    _setting_field[update.effective_chat.id] = 'venue'
+    _setting_field[update.effective_user.id] = 'venue'
     await update.message.reply_text(t('en', 'admin_set_prompt', field='venue'))
 
 
 async def handle_setting_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    admin_id = update.effective_chat.id
+    admin_id = update.effective_user.id
+
+    # ── Deny reason flow ─────────────────────────────────────────────────────
+    target_id = _deny_pending.pop(admin_id, None)
+    if target_id is not None:
+        reason    = update.message.text
+        msg_info  = _deny_msg_info.pop(admin_id, None)
+        participant = db.get_participant(target_id)
+        if participant:
+            db.update_participant(target_id, {'status': 'denied', 'denial_reason': reason})
+            lang = utils.get_lang(participant)
+            await context.bot.send_message(
+                target_id,
+                t(lang, 'denied_notification', reason=reason),
+                parse_mode=ParseMode.MARKDOWN,
+            )
+            name = participant.get('full_name', str(target_id))
+            if msg_info:
+                try:
+                    await context.bot.edit_message_caption(
+                        chat_id=msg_info[0],
+                        message_id=msg_info[1],
+                        caption=f"❌ *Denied* — {name}\nReason: {reason}",
+                        parse_mode=ParseMode.MARKDOWN,
+                    )
+                except Exception:
+                    pass
+            await update.message.reply_text(t('en', 'admin_denied', name=name))
+        return
+
+    # ── Schedule / venue setting flow ─────────────────────────────────────────
     field = _setting_field.pop(admin_id, None)
     if not field:
-        return  # not in a setting flow — handled by info handler
+        return  # not in any admin flow
     text = update.message.text
     if field == 'schedule':
         db.set_setting('schedule_text', text)
@@ -378,6 +497,8 @@ async def cmd_nuke3(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def get_admin_handlers() -> list:
     return [
+        CallbackQueryHandler(cb_admin_approve,    pattern='^admin_approve_'),
+        CallbackQueryHandler(cb_admin_deny_start, pattern='^admin_deny_'),
         CommandHandler('pending',       cmd_pending),
         CommandHandler('approve',       cmd_approve),
         CommandHandler('deny',          cmd_deny),
