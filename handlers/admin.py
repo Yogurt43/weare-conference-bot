@@ -519,6 +519,36 @@ async def cmd_removeuser(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(t('en', 'admin_user_removed'))
 
 
+@_require_admin
+async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "*Admin commands:*\n\n"
+        "📋 *Registration*\n"
+        "/pending — list pending registrations\n"
+        "/approve `<id>` — approve a user\n"
+        "/deny `<id>` `<reason>` — deny a user\n"
+        "/viewreceipt `<id>` — view a user's receipt\n"
+        "/participants — list all participants\n\n"
+        "🏠 *Housing*\n"
+        "/addhouse `<name>` `<capacity>` — add a house (gender via buttons)\n"
+        "/removehouse `<name>` — remove a house\n"
+        "/listhouses — list all houses and occupancy\n"
+        "/moveresident `<id>` `<house>` — move a user to a house\n\n"
+        "📢 *Broadcast*\n"
+        "/broadcast `<message>` — send message to all approved users\n\n"
+        "⚙️ *Settings*\n"
+        "/setschedule — set schedule text\n"
+        "/setvenue — set venue text\n"
+        "/pause `<housing|qa|messages>` — pause a feature\n"
+        "/resume `<housing|qa|messages>` — resume a feature\n"
+        "/status — show bot stats\n\n"
+        "👑 *Owner only*\n"
+        "/addadmin `<id>` — add an admin\n"
+        "/removeuser `<id>` — delete a participant\n",
+        parse_mode='Markdown'
+    )
+
+
 @_require_owner
 async def cmd_nuke(update: Update, context: ContextTypes.DEFAULT_TYPE):
     _nuke_step[update.effective_chat.id] = 1
@@ -547,6 +577,7 @@ def get_admin_handlers() -> list:
         CallbackQueryHandler(cb_admin_approve,    pattern='^admin_approve_'),
         CallbackQueryHandler(cb_admin_deny_start, pattern='^admin_deny_'),
         CallbackQueryHandler(cb_addhouse_gender,  pattern='^addhouse_gender_'),
+        CommandHandler('help',          cmd_help),
         CommandHandler('pending',       cmd_pending),
         CommandHandler('approve',       cmd_approve),
         CommandHandler('deny',          cmd_deny),
