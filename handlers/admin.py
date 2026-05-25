@@ -196,6 +196,9 @@ async def cb_admin_deny_start(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     _deny_pending[admin_user_id]  = target_id
     _deny_msg_info[admin_user_id] = (query.message.chat_id, query.message.message_id)
+    # Persist to DB so state survives bot restarts/deploys
+    db.set_setting(f'deny_pending_{admin_user_id}', str(target_id))
+    db.set_setting(f'deny_msg_{admin_user_id}', f'{query.message.chat_id}:{query.message.message_id}')
 
     name = participant.get('full_name', str(target_id))
     await context.bot.send_message(
@@ -409,9 +412,28 @@ async def handle_setting_input(update: Update, context: ContextTypes.DEFAULT_TYP
 
     # ── Deny reason flow ─────────────────────────────────────────────────────
     target_id = _deny_pending.pop(admin_id, None)
+
+    # Fall back to DB if memory was wiped by a restart/deploy
+    if target_id is None:
+        stored = db.get_setting(f'deny_pending_{admin_id}')
+        if stored:
+            target_id = int(stored)
+
     if target_id is not None:
-        reason    = update.message.text
-        msg_info  = _deny_msg_info.pop(admin_id, None)
+        reason   = update.message.text
+        msg_info = _deny_msg_info.pop(admin_id, None)
+
+        # Fall back to DB for the notification message coordinates
+        if msg_info is None:
+            stored_msg = db.get_setting(f'deny_msg_{admin_id}')
+            if stored_msg and ':' in stored_msg:
+                chat_part, msg_part = stored_msg.split(':', 1)
+                msg_info = (int(chat_part), int(msg_part))
+
+        # Clear DB entries
+        db.set_setting(f'deny_pending_{admin_id}', '')
+        db.set_setting(f'deny_msg_{admin_id}', '')
+
         participant = db.get_participant(target_id)
         if participant:
             db.update_participant(target_id, {'status': 'denied', 'denial_reason': reason})
