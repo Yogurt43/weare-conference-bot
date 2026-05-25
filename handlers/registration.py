@@ -232,6 +232,13 @@ async def handle_receipt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     return ConversationHandler.END
 
 
+async def _prompt_use_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """User typed text when an inline button response was expected — nudge them."""
+    lang = _get_lang(update, context)
+    await update.message.reply_text(t(lang, 'use_buttons'))
+    # Return None → ConversationHandler keeps the current state
+
+
 def _get_lang(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     """Get lang from user_data cache or DB."""
     lang = context.user_data.get('lang')
@@ -273,11 +280,14 @@ def build_registration_handler() -> ConversationHandler:
     return ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
-            LANG:         [CallbackQueryHandler(handle_lang, pattern='^lang_')],
+            LANG:         [CallbackQueryHandler(handle_lang, pattern='^lang_'),
+                           MessageHandler(filters.TEXT & ~filters.COMMAND, _prompt_use_buttons)],
             NAME:         [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_name)],
             AGE:          [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_age)],
-            GENDER:       [CallbackQueryHandler(handle_gender, pattern='^gender_')],
-            HOUSING_PREF: [CallbackQueryHandler(handle_housing_pref, pattern='^housing_')],
+            GENDER:       [CallbackQueryHandler(handle_gender, pattern='^gender_'),
+                           MessageHandler(filters.TEXT & ~filters.COMMAND, _prompt_use_buttons)],
+            HOUSING_PREF: [CallbackQueryHandler(handle_housing_pref, pattern='^housing_'),
+                           MessageHandler(filters.TEXT & ~filters.COMMAND, _prompt_use_buttons)],
             PHONE:        [MessageHandler(filters.CONTACT, handle_phone)],
             PAYMENT_STEP: [],  # user just reads the message and sends receipt
             RECEIPT:      [MessageHandler(filters.PHOTO | filters.Document.ALL, handle_receipt)],
