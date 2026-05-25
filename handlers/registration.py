@@ -80,8 +80,15 @@ async def handle_lang(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 
 
 async def handle_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    lang = _get_lang(update, context)
-    name = update.message.text.strip()
+    lang  = _get_lang(update, context)
+    words = update.message.text.strip().split()
+
+    if len(words) < 2:
+        await update.message.reply_text(t(lang, 'invalid_name'))
+        return NAME
+
+    # Auto-capitalize each word (e.g. "john smith" → "John Smith")
+    name = ' '.join(word.capitalize() for word in words)
     context.user_data['full_name'] = name
     db.update_participant(update.effective_chat.id, {'full_name': name})
 
