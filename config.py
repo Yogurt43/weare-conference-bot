@@ -1,7 +1,7 @@
 import os
 
 # ─── Conference identity ───────────────────────────────────────────────────────
-CONF_NAME = "CONFERENCE_NAME"   # ← replace this one line to rebrand
+CONF_NAME = "WeAre"
 
 # ─── Telegram ─────────────────────────────────────────────────────────────────
 BOT_TOKEN    = os.environ["BOT_TOKEN"]
