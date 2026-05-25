@@ -129,8 +129,11 @@ async def cmd_approve(update: Update, context: ContextTypes.DEFAULT_TYPE):
     db.update_participant(target_id, {'status': 'approved'})
     db.confirm_reservation(participant['id'])
     lang = utils.get_lang(participant)
-    await context.bot.send_message(target_id, t(lang, 'approved_welcome'), parse_mode=ParseMode.MARKDOWN)
-    await _send_main_menu_to(context.bot, target_id, lang)
+    try:
+        await context.bot.send_message(target_id, t(lang, 'approved_welcome'), parse_mode=ParseMode.MARKDOWN)
+        await _send_main_menu_to(context.bot, target_id, lang)
+    except Exception:
+        pass  # user may have blocked the bot; DB state already updated
     await update.message.reply_text(t('en', 'admin_approved', name=participant.get('full_name', str(target_id))))
 
 
@@ -148,11 +151,14 @@ async def cmd_deny(update: Update, context: ContextTypes.DEFAULT_TYPE):
     db.update_participant(target_id, {'status': 'denied', 'denial_reason': reason})
     db.release_tentative_reservation(participant['id'])  # release tentative house reservation
     lang = utils.get_lang(participant)
-    await context.bot.send_message(
-        target_id,
-        t(lang, 'denied_notification', reason=reason),
-        parse_mode=ParseMode.MARKDOWN
-    )
+    try:
+        await context.bot.send_message(
+            target_id,
+            t(lang, 'denied_notification', reason=reason),
+            parse_mode=ParseMode.MARKDOWN
+        )
+    except Exception:
+        pass  # user may have blocked the bot; DB state already updated
     await update.message.reply_text(t('en', 'admin_denied', name=participant.get('full_name', str(target_id))))
 
 
@@ -195,8 +201,11 @@ async def cb_admin_approve(update: Update, context: ContextTypes.DEFAULT_TYPE):
     db.update_participant(target_id, {'status': 'approved'})
     db.confirm_reservation(participant['id'])
     lang = utils.get_lang(participant)
-    await context.bot.send_message(target_id, t(lang, 'approved_welcome'), parse_mode=ParseMode.MARKDOWN)
-    await _send_main_menu_to(context.bot, target_id, lang)
+    try:
+        await context.bot.send_message(target_id, t(lang, 'approved_welcome'), parse_mode=ParseMode.MARKDOWN)
+        await _send_main_menu_to(context.bot, target_id, lang)
+    except Exception:
+        pass  # user may have blocked the bot; DB state already updated
 
     admin_name = update.effective_user.first_name or "Admin"
     name = participant.get('full_name', str(target_id))
@@ -234,11 +243,14 @@ async def cb_admin_deny_start(update: Update, context: ContextTypes.DEFAULT_TYPE
     db.set_setting(f'deny_msg_{admin_user_id}', f'{query.message.chat_id}:{query.message.message_id}')
 
     name = participant.get('full_name', str(target_id))
-    await context.bot.send_message(
-        query.message.chat_id,
-        f"✏️ Type the denial reason for *{name}*:",
-        parse_mode=ParseMode.MARKDOWN,
-    )
+    try:
+        await context.bot.send_message(
+            query.message.chat_id,
+            f"✏️ Type the denial reason for *{name}*:",
+            parse_mode=ParseMode.MARKDOWN,
+        )
+    except Exception:
+        pass
 
 
 async def cb_admin_hold_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -439,12 +451,15 @@ async def handle_setting_input(update: Update, context: ContextTypes.DEFAULT_TYP
             keyboard = InlineKeyboardMarkup([[
                 InlineKeyboardButton(t(lang, 'btn_have_question'), callback_data='pre_approval_question')
             ]])
-            await context.bot.send_message(
-                hold_target,
-                t(lang, 'on_hold_notification', reason=reason),
-                reply_markup=keyboard,
-                parse_mode=ParseMode.MARKDOWN,
-            )
+            try:
+                await context.bot.send_message(
+                    hold_target,
+                    t(lang, 'on_hold_notification', reason=reason),
+                    reply_markup=keyboard,
+                    parse_mode=ParseMode.MARKDOWN,
+                )
+            except Exception:
+                pass  # user may have blocked the bot; DB state already updated
             name = participant.get('full_name', str(hold_target))
             if msg_info:
                 try:
@@ -492,11 +507,14 @@ async def handle_setting_input(update: Update, context: ContextTypes.DEFAULT_TYP
             db.update_participant(target_id, {'status': 'denied', 'denial_reason': reason})
             db.release_tentative_reservation(participant['id'])
             lang = utils.get_lang(participant)
-            await context.bot.send_message(
-                target_id,
-                t(lang, 'denied_notification', reason=reason),
-                parse_mode=ParseMode.MARKDOWN,
-            )
+            try:
+                await context.bot.send_message(
+                    target_id,
+                    t(lang, 'denied_notification', reason=reason),
+                    parse_mode=ParseMode.MARKDOWN,
+                )
+            except Exception:
+                pass  # user may have blocked the bot; DB state already updated
             name = participant.get('full_name', str(target_id))
             if msg_info:
                 try:

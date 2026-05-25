@@ -8,6 +8,11 @@ import utils
 from strings import t
 from config import QA_RATE_LIMIT, GROUP_CHAT_ID, PRICE_WITH_HOUSING, PRICE_WITHOUT_HOUSING
 
+
+def _md_escape(s: str) -> str:
+    return s.replace('_', r'\_').replace('*', r'\*').replace('`', r'\`').replace('[', r'\[')
+
+
 # In-memory state for "expecting message" (keyed by chat_id)
 _awaiting_qa: set[int] = set()
 _awaiting_msg: set[int] = set()
@@ -102,9 +107,11 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
         target = _org_channel()
         if target:
             name = participant.get('full_name', 'Unknown')
+            name_safe = _md_escape(name)
+            text_safe = _md_escape(text)
             await context.bot.send_message(
                 target,
-                f"❓ *Question from {name}*\n\n{text}",
+                f"❓ *Question from {name_safe}*\n\n{text_safe}",
                 parse_mode=ParseMode.MARKDOWN,
             )
         return
@@ -137,15 +144,17 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
             }
             status_str = status_labels.get(status, '⏳ Pending')
             name = participant.get('full_name', 'Unknown')
+            name_safe = _md_escape(name)
+            text_safe = _md_escape(text)
 
             if target:
                 await context.bot.send_message(
                     target,
                     f"📨 *Message from pending registrant*\n\n"
-                    f"👤 *{name}* · status: {status_str}\n"
+                    f"👤 *{name_safe}* · status: {status_str}\n"
                     f"💳 Amount due: *{amount}* ({housing_label})\n"
                     f"{contact_line}\n\n"
-                    f"_{text}_",
+                    f"_{text_safe}_",
                     parse_mode=ParseMode.MARKDOWN,
                 )
             await update.message.reply_text(
@@ -159,9 +168,11 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(t(lang, 'coordinator_submitted'))
             if target:
                 name = participant.get('full_name', 'Unknown') if participant else 'Unknown'
+                name_safe = _md_escape(name)
+                text_safe = _md_escape(text)
                 await context.bot.send_message(
                     target,
-                    f"📨 *Message from {name}*\n\n{text}",
+                    f"📨 *Message from {name_safe}*\n\n{text_safe}",
                     parse_mode=ParseMode.MARKDOWN,
                 )
         return
